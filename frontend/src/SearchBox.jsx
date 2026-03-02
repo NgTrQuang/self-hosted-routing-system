@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2, MapPin, X } from 'lucide-react'
+import { useI18n } from './i18n'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 
@@ -64,6 +65,7 @@ function formatSubtitle(item) {
 }
 
 export default function SearchBox({ label, color, onSelect }) {
+  const { t, lang } = useI18n()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -139,7 +141,7 @@ export default function SearchBox({ label, color, onSelect }) {
           value={query}
           onChange={e => { setQuery(e.target.value) }}
           onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder={`Tìm kiếm ${label.toLowerCase()}...`}
+          placeholder={`${t('searchPlaceholder').replace('...', '')} ${label.toLowerCase()}...`}
           className="flex-1 bg-transparent text-sm text-white px-2 py-2 outline-none placeholder-gray-500"
         />
         {loading && <Loader2 size={13} className="mr-2 text-gray-400 animate-spin shrink-0" />}
@@ -186,7 +188,7 @@ export default function SearchBox({ label, color, onSelect }) {
 
       {!open && query.length >= 2 && !loading && results.length === 0 && (
         <div className="absolute z-[2000] mt-1 w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2.5 text-xs text-gray-400">
-          Không tìm thấy — thử thêm tên tỉnh, ví dụ: "Cầu Trà Ôn, Vĩnh Long"
+          {t('noResults')} {lang === 'vi' ? '— thử thêm tên tỉnh, ví dụ: "Cầu Trà Ôn, Vĩnh Long"' : '— try adding province/city name'}
         </div>
       )}
     </div>
