@@ -1,12 +1,13 @@
-# Production compose — uses real OSRM with preprocessed vietnam-260301.osrm
+# Production compose — uses real OSRM with preprocessed vietnam-latest.osrm
 # Prerequisite: run scripts/preprocess.sh once before first use
+# OSRM file name must match what preprocess.sh produced in osrm-data/
 
 services:
   osrm:
     image: osrm/osrm-backend
     volumes:
       - ./osrm-data:/data
-    command: osrm-routed --algorithm mld /data/vietnam-260301.osrm
+    command: osrm-routed --algorithm mld /data/vietnam-latest.osrm
     ports:
       - "5000:5000"
     restart: always
@@ -22,6 +23,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - CACHE_TTL=300
       - REQUEST_TIMEOUT=10.0
+      - ALLOWED_ORIGINS=*
     depends_on:
       - osrm
       - redis
