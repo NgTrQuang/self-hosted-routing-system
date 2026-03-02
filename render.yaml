@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: routing-mock-osrm
+    runtime: docker
+    dockerfilePath: ./mock-osrm/Dockerfile
+    dockerContext: ./mock-osrm
+    plan: free
+
+  - type: web
+    name: routing-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: OSRM_BASE_URL
+        value: https://routing-mock-osrm.onrender.com
+      - key: REDIS_URL
+        sync: false
+      - key: CACHE_TTL
+        value: 300
+      - key: REQUEST_TIMEOUT
+        value: 15.0
