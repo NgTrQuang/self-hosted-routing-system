@@ -14,6 +14,20 @@ services:
     networks:
       - routing-net
 
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: routing
+      POSTGRES_USER: routing
+      POSTGRES_PASSWORD: routing123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - routing-net
+
   backend:
     build: ./backend
     ports:
@@ -24,9 +38,11 @@ services:
       - CACHE_TTL=300
       - REQUEST_TIMEOUT=10.0
       - ALLOWED_ORIGINS=*
+      - DATABASE_URL=postgresql+asyncpg://routing:routing123@postgres:5432/routing
     depends_on:
       - osrm
       - redis
+      - postgres
     restart: always
     networks:
       - routing-net
@@ -55,3 +71,6 @@ services:
 networks:
   routing-net:
     driver: bridge
+
+volumes:
+  postgres-data:

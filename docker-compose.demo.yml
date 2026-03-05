@@ -17,6 +17,20 @@ services:
       timeout: 3s
       retries: 5
 
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: routing
+      POSTGRES_USER: routing
+      POSTGRES_PASSWORD: routing123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - routing-net
+
   backend:
     build: ./backend
     ports:
@@ -26,10 +40,13 @@ services:
       - REDIS_URL=redis://redis:6379
       - CACHE_TTL=300
       - REQUEST_TIMEOUT=10.0
+      - DATABASE_URL=postgresql+asyncpg://routing:routing123@postgres:5432/routing
     depends_on:
       osrm:
         condition: service_healthy
       redis:
+        condition: service_started
+      postgres:
         condition: service_started
     restart: always
     networks:
@@ -59,3 +76,6 @@ services:
 networks:
   routing-net:
     driver: bridge
+
+volumes:
+  postgres-data:

@@ -1,12 +1,15 @@
 import json
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 import redis.asyncio as aioredis
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import REDIS_URL, CACHE_TTL
 from app.services import osrm_service
 from app.schemas.route_schema import RouteResponse, MatrixRequest, MatrixResponse, TripRequest, TripResponse
+from app.db.base import get_db
+from app.db.models.route_history import RouteHistory
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,6 +27,9 @@ async def get_route(
     destLat: float = Query(..., description="Destination latitude"),
     destLng: float = Query(..., description="Destination longitude"),
     waypoints: str = Query(None, description="Intermediate waypoints as 'lat,lng|lat,lng'"),
+    originName: str = Query(None, description="Origin place name"),
+    destName: str = Query(None, description="Destination place name"),
+    db: AsyncSession = Depends(get_db),
 ):
     parsed_waypoints = None
     if waypoints:
@@ -58,6 +64,21 @@ async def get_route(
             await r.aclose()
     except Exception:
         pass
+
+    try:
+        history = RouteHistory(
+            origin_lat=originLat, origin_lng=originLng,
+            dest_lat=destLat, dest_lng=destLng,
+            origin_name=originName, dest_name=destName,
+            distance_m=result.get("distanceMeters"),
+            duration_s=result.get("durationSeconds"),
+            waypoints=parsed_waypoints,
+            mode="route",
+        )
+        db.add(history)
+        await db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to save route history: {e}")
 
     return result
 

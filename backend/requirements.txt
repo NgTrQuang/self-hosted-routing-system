@@ -4,3 +4,7 @@ httpx
 pydantic
 redis
 polyline
+asyncpg
+sqlalchemy[asyncio]>=2.0
+geoalchemy2
+alembic

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2, MapPin, X } from 'lucide-react'
 import { useI18n } from './i18n'
+import { fetchPlacesSearch } from './api'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 
@@ -35,16 +36,37 @@ async function nominatimSearch(q) {
   const res = await fetch(`${NOMINATIM_URL}?${params}`, {
     headers: { 'Accept-Language': 'vi,en' },
   })
-  return res.json()
+  const raw = await res.json()
+  return raw.map(item => ({
+    id: item.place_id,
+    name: item.display_name.split(',')[0].trim(),
+    address: item.display_name,
+    province: item.address?.state || item.address?.province || null,
+    district: item.address?.county || item.address?.city_district || null,
+    type: item.type || item.class || null,
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    source: 'nominatim',
+  }))
 }
 
-function deduplicateByPlaceId(arrays) {
+async function backendSearch(q) {
+  try {
+    const data = await fetchPlacesSearch(q, 10)
+    return data.results || []
+  } catch {
+    return null
+  }
+}
+
+function deduplicateById(arrays) {
   const seen = new Set()
   const result = []
   for (const arr of arrays) {
     for (const item of arr) {
-      if (!seen.has(item.place_id)) {
-        seen.add(item.place_id)
+      const key = item.id ?? `${item.lat},${item.lng}`
+      if (!seen.has(key)) {
+        seen.add(key)
         result.push(item)
       }
     }
@@ -53,15 +75,19 @@ function deduplicateByPlaceId(arrays) {
 }
 
 function formatSubtitle(item) {
-  const parts = item.display_name.split(',')
-  // show province/city level (last 2-3 meaningful parts)
+  // Backend format: has province/district fields directly
+  if (item.province || item.district) {
+    return [item.district, item.province].filter(Boolean).join(', ')
+  }
+  // Nominatim fallback: parse from address object or display_name
   const addr = item.address || {}
   const province = addr.state || addr.province || ''
   const district = addr.county || addr.city_district || addr.district || ''
   const city = addr.city || addr.town || addr.village || ''
-  const parts2 = [city, district, province].filter(Boolean)
-  if (parts2.length > 0) return parts2.join(', ')
-  return parts.slice(1, 4).join(',')
+  const parts = [city, district, province].filter(Boolean)
+  if (parts.length > 0) return parts.join(', ')
+  if (item.address) return item.address.split(',').slice(1, 4).join(',')
+  return ''
 }
 
 export default function SearchBox({ label, color, onSelect }) {
@@ -94,15 +120,19 @@ export default function SearchBox({ label, color, onSelect }) {
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const alreadyHasVN = /vi[eê]t\s*nam/i.test(trimmed)
-        const queries = alreadyHasVN
-          ? [nominatimSearch(trimmed)]
-          : [nominatimSearch(trimmed), nominatimSearch(trimmed + ', Việt Nam')]
+        let results = await backendSearch(trimmed)
 
-        const results = await Promise.all(queries)
-        const merged = deduplicateByPlaceId(results).slice(0, 10)
-        setResults(merged)
-        setOpen(merged.length > 0)
+        if (!results || results.length === 0) {
+          const alreadyHasVN = /vi[eê]t\s*nam/i.test(trimmed)
+          const queries = alreadyHasVN
+            ? [nominatimSearch(trimmed)]
+            : [nominatimSearch(trimmed), nominatimSearch(trimmed + ', Việt Nam')]
+          const raw = await Promise.all(queries)
+          results = deduplicateById(raw).slice(0, 10)
+        }
+
+        setResults(results.slice(0, 10))
+        setOpen(results.length > 0)
       } catch {
         setResults([])
       } finally {
@@ -112,10 +142,10 @@ export default function SearchBox({ label, color, onSelect }) {
   }, [query])
 
   function handleSelect(item) {
-    setQuery(item.display_name.split(',')[0])
+    setQuery(item.name || item.display_name?.split(',')[0] || '')
     setOpen(false)
     setResults([])
-    onSelect(parseFloat(item.lat), parseFloat(item.lon), item.display_name)
+    onSelect(item.lat, item.lng, item.address || item.name)
   }
 
   function handleClear() {
@@ -154,11 +184,11 @@ export default function SearchBox({ label, color, onSelect }) {
 
       {open && results.length > 0 && (
         <ul className="absolute z-[2000] mt-1 w-full bg-gray-800 border border-gray-600 rounded-lg shadow-2xl overflow-hidden max-h-72 overflow-y-auto">
-          {results.map((item) => {
+          {results.map((item, idx) => {
             const typeLabel = getTypeLabel(item)
             const subtitle = formatSubtitle(item)
             return (
-              <li key={item.place_id}>
+              <li key={item.id ?? idx}>
                 <button
                   onMouseDown={() => handleSelect(item)}
                   className="w-full text-left px-3 py-2.5 hover:bg-gray-700 transition-colors flex items-start gap-2 border-b border-gray-700/50 last:border-0"
@@ -167,7 +197,7 @@ export default function SearchBox({ label, color, onSelect }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-sm text-white leading-tight">
-                        {item.display_name.split(',')[0]}
+                        {item.name || item.display_name?.split(',')[0]}
                       </p>
                       {typeLabel && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${tagColor}`}>

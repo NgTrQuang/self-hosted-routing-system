@@ -39,6 +39,12 @@ export async function fetchMatrix(origins, destinations) {
   return res.json()
 }
 
+export async function fetchPlacesSearch(q, limit = 10) {
+  const res = await fetch(`${BASE_URL}/api/places/search?q=${encodeURIComponent(q)}&limit=${limit}`)
+  if (!res.ok) throw new Error('Places search failed')
+  return res.json()
+}
+
 export async function checkHealth() {
   const res = await fetch(`${BASE_URL}/health`)
   return res.json()
