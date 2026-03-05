@@ -6,7 +6,7 @@ CACHE_TTL: int = int(os.getenv("CACHE_TTL", "300"))
 REQUEST_TIMEOUT: float = float(os.getenv("REQUEST_TIMEOUT", "10.0"))
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://routing:routing123@localhost:5432/routing",
+    "postgresql+asyncpg://postgres:123456@localhost:5432/routing",
 )
 
 _origins_env: str = os.getenv("ALLOWED_ORIGINS", "*")

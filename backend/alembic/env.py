@@ -17,7 +17,7 @@ config = context.config
 # Override sqlalchemy.url from env var if set
 db_url = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://routing:routing123@localhost:5432/routing",
+    "postgresql+asyncpg://postgres:123456@localhost:5432/routing",
 )
 config.set_main_option("sqlalchemy.url", db_url)
 
