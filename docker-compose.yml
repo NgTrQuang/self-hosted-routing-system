@@ -1,5 +1,5 @@
-# Production compose — uses real OSRM with preprocessed vietnam-latest.osrm
-# Prerequisite: run scripts/preprocess.sh once before first use
+# Production compose — uses real OSRM with preprocessed data in osrm-data/
+# Prerequisite: osrm-data/ must contain preprocessed .osrm files (see DEPLOY.md)
 # OSRM file name must match what preprocess.sh produced in osrm-data/
 
 services:
